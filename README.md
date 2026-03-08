@@ -163,7 +163,8 @@ flowchart TD
 
     %% Définition des flux
     CLIENT -- "Investigation manuelle" --> API
-    API <--> "Lecture/Écriture rapide" CACHE
+    API -- "Vérifie" --> CACHE
+    CACHE -- "Miss/Hit" --> API
     API -- "Soumet IOC" --> ORCHESTRATOR
     
     COLLECTOR -- "Actualisation périodique" --> ORCHESTRATOR
