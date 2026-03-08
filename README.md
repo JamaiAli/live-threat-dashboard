@@ -137,53 +137,38 @@ flowchart LR
 Ce système est conçu avec un **Orchestrateur asynchrone** capable de gérer l'enrichissement manuel (par les utilisateurs via l'API) ou automatique (via un processus 'collector' en arrière-plan). Les requêtes API bénéficient d'un cache mémoire pour une lecture rapide, tandis que les opérations lourdes sont déléguées à la base de données PostgreSQL.
 
 ```mermaid
-flowchart TD
-    %% Entités Externes
-    subgraph Sources ["Threat Intel Sources (API Externes)"]
-        ABUSE["AbuseIPDB"]
-        OTX["AlienVault OTX"]
-        VT["VirusTotal"]
-    end
+flowchart LR
+    %% Entités
+    CLIENT["Analyste / UI"]
+    API["API FastAPI\n(/lookup/{ioc})"]
+    CACHE[("Cache TTL Mémoire")]
+    COLLECTOR["Processus Collecteur\n(Arrière-plan)"]
+    ORCHESTRATOR["Orchestrateur & Scoring"]
+    DB[("PostgreSQL\n(ioc, enrichment, summary)")]
+    GRAFANA["Tableau de bord\nGrafana"]
+    
+    %% Sources
+    ABUSE["AbuseIPDB"]
+    OTX["AlienVault OTX"]
+    VT["VirusTotal"]
 
-    %% Utilisateurs et API
-    subgraph Frontend ["Interactions"]
-        CLIENT["Analyste / UI / Navigateur"]
-        GRAFANA["Tableau de bord Grafana"]
-    end
-
-    %% Application Backend
-    subgraph Backend ["FastAPI API + Services"]
-        LOOKUP["Endpoint API: /lookup/{ioc}"]
-        COLLECTOR["Processus Collecteur\n(python -m app.collector)"]
-        ENGINE["Orchestrateur d'Enrichissement\n(Exécution Concurrente)"]
-        SCORE["Moteur de Normalisation \n& Calcul du Score de Risque"]
-        CACHE[("Cache TTL en Mémoire")]
-    end
-
-    %% Stockage
-    subgraph Database ["PostgreSQL (Relational Storage)"]
-        T1[("Table: ioc\n(Entités)")]
-        T2[("Table: enrichment\n(JSON Brut des sources)")]
-        T3[("Table: ioc_summary\n(Agrégation des scores)")]
-    end
-
-    %% Flux Logiques
-    CLIENT -- Demande d'investigation --> LOOKUP
-    LOOKUP <-->|Vérification accès rapide| CACHE
-    LOOKUP -- Validation IOC --> ENGINE
-    COLLECTOR -- Traitement par lots (IOC ayant expiré) --> ENGINE
-
-    ENGINE -- "Requêtes Asynchrones" --> ABUSE
-    ENGINE -- "Requêtes Asynchrones" --> OTX
-    ENGINE -- "Requêtes Asynchrones" --> VT
-
-    ENGINE -- "Réponses Brutes" --> SCORE
-    SCORE -- "Score / Niveau de Risque" --> LOOKUP
-    SCORE -- "Sauvegarde Historique" --> Database
-
-    Database --> T1 & T2 & T3
-    T2 & T3 -- "Requêtes SQL Périodiques" --> GRAFANA
-    GRAFANA -- "Visualisation en direct" --> CLIENT
+    %% Flux de données
+    CLIENT -- "Requête manuelle" --> API
+    API <--> "Vérifie" CACHE
+    API --> "IOC à vérifier" ORCHESTRATOR
+    
+    COLLECTOR -- "Mise à jour (Auto)" --> ORCHESTRATOR
+    
+    ORCHESTRATOR -- "Req. Async" --> ABUSE
+    ORCHESTRATOR -- "Req. Async" --> OTX
+    ORCHESTRATOR -- "Req. Async" --> VT
+    
+    ORCHESTRATOR -- "Score & Historique" --> DB
+    ORCHESTRATOR -- "Résultats" --> API
+    API -- "Réponse JSON" --> CLIENT
+    
+    DB -- "Requêtes SQL" --> GRAFANA
+    GRAFANA -- "Supervision" --> CLIENT
 ```
 
 ### Points clés de l'architecture :
