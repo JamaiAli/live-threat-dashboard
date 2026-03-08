@@ -122,9 +122,6 @@ flowchart LR
     GRAF --> PROV["provisioning/ (Configuration auto Grafana)"]
     GRAF --> DASHJSON["dashboards/ (Modèles JSON des graphiques)"]
     DOCS --> SHOTS["screenshots/"]
-
-    classDef folder fill:#f9f9f9,stroke:#333,stroke-width:1px;
-    class ROOT,BACK,DBDIR,GRAF,DOCS,APP,TESTS,ROUTERS,SOURCES folder;
 ```
 
 ### Rôles des principaux dossiers :
